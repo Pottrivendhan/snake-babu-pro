@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🐍 Snake Babu Pro</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--green:#00ff88;--dark:#0a0f1e;--panel:#0f172a;--card:#1e293b;--border:#334155;--text:#e2e8f0;--muted:#64748b;}
+body{background:var(--dark);color:var(--text);font-family:'Segoe UI',Arial,sans-serif;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;padding:10px 0;overflow-x:hidden;}
+#bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none;}
+.container{position:relative;z-index:1;text-align:center;width:100%;max-width:560px;padding:0 10px;}
+h1{font-size:2.3rem;font-weight:900;color:var(--green);letter-spacing:2px;text-shadow:0 0 20px rgba(0,255,136,0.4);margin-bottom:2px;}
+.subtitle{color:var(--muted);font-size:12px;margin-bottom:8px;}
+
+/* stats */
+.stats{display:flex;justify-content:center;gap:6px;margin:6px 0;flex-wrap:wrap;}
+.stat-box{background:var(--card);border:1px solid var(--border);padding:5px 14px;border-radius:20px;font-size:12px;min-width:75px;}
+.stat-box span{font-weight:700;color:var(--green);}
+
+/* top bar */
+.top-bar{display:flex;justify-content:center;gap:6px;margin:6px 0;flex-wrap:wrap;}
+.btn{padding:7px 16px;border:none;border-radius:20px;cursor:pointer;font-size:13px;font-weight:700;transition:.2s;display:inline-flex;align-items:center;gap:5px;}
+.btn:hover{transform:scale(1.05);}
+.btn-pause{background:#f59e0b;color:#000;}
+.btn-restart{background:#ef4444;color:#fff;}
+.btn-settings{background:#6366f1;color:#fff;}
+.btn-start{background:var(--green);color:#000;font-size:15px;padding:12px 32px;border-radius:30px;margin-top:12px;}
+
+/* canvas */
+.canvas-wrap{position:relative;display:inline-block;margin:6px 0;}
+canvas#game{display:block;border:2px solid var(--green);border-radius:10px;box-shadow:0 0 28px rgba(0,255,136,0.18);}
+
+/* game overlay */
+#overlay{position:absolute;inset:0;background:rgba(5,10,25,0.94);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:20;border-radius:10px;padding:20px;}
+#overlay h2{font-size:1.9rem;font-weight:900;color:var(--green);margin-bottom:6px;}
+#overlay .ov-score{font-size:2.4rem;font-weight:900;color:#fff;margin:4px 0;}
+#overlay .ov-sub{color:var(--muted);font-size:13px;margin-bottom:14px;}
+
+/* level up */
+#levelup-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.65);display:none;flex-direction:column;justify-content:center;align-items:center;z-index:25;border-radius:10px;pointer-events:none;}
+#levelup-overlay.show{display:flex;}
+#levelup-overlay h2{font-size:2.8rem;font-weight:900;color:#ffd700;text-shadow:0 0 30px #ffd700;animation:lvlpulse .5s ease infinite alternate;}
+@keyframes lvlpulse{from{transform:scale(1);}to{transform:scale(1.1);}}
+#levelup-overlay .lvl-stars{font-size:1.8rem;margin-top:6px;animation:starspin 1s linear infinite;}
+@keyframes starspin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+
+/* powerup legend */
+.pu-legend{display:flex;gap:10px;justify-content:center;margin:4px 0;flex-wrap:wrap;}
+.pu-item{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);}
+.pu-dot{width:9px;height:9px;border-radius:50%;}
+
+/* dpad */
+.dpad{display:grid;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(3,54px);gap:4px;justify-content:center;margin:8px auto 4px;}
+.dpad-btn{background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none;transition:.1s;}
+.dpad-btn:active,.dpad-btn.pressed{background:#334155;transform:scale(0.92);}
+.dpad-empty{background:transparent;border:none;}
+
+/* info panels */
+.info-panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin:8px 0;text-align:left;}
+.panel-title{color:var(--green);font-size:13px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+
+/* missions */
+.mission-list{display:flex;flex-direction:column;gap:6px;}
+.mission-item{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:10px;}
+.mission-item.done{border-color:var(--green);opacity:0.55;}
+.mission-bar-wrap{flex:1;background:#0f172a;border-radius:10px;height:6px;overflow:hidden;}
+.mission-bar{height:100%;background:var(--green);border-radius:10px;transition:width .4s;}
+.mission-label{font-size:11px;color:var(--muted);white-space:nowrap;}
+
+/* achievements */
+.ach-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.ach-item{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px;display:flex;align-items:center;gap:8px;}
+.ach-item.unlocked{border-color:#ffd700;background:rgba(255,215,0,0.06);}
+.ach-icon{font-size:19px;}
+.ach-name{font-weight:700;font-size:11px;color:var(--text);}
+.ach-desc{color:var(--muted);font-size:10px;}
+
+/* leaderboard */
+.lb-row{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid var(--border);}
+.lb-row:last-child{border:none;}
+.lb-rank{color:var(--muted);width:28px;}
+.lb-score{color:var(--green);font-weight:700;}
+
+/* ═══════════════════════════════════════════
+   SETTINGS MODAL
+═══════════════════════════════════════════ */
+#settings-backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,0.75);
+  z-index:200;display:none;justify-content:center;align-items:flex-start;
+  padding:20px 10px;overflow-y:auto;
+}
+#settings-backdrop.open{display:flex;}
+#settings-modal{
+  background:#0f172a;border:1px solid var(--border);border-radius:16px;
+  width:100%;max-width:480px;padding:0;overflow:hidden;
+  box-shadow:0 20px 60px rgba(0,0,0,0.8);
+}
+.settings-header{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:16px 20px;border-bottom:1px solid var(--border);
+  background:#0a0f1e;
+}
+.settings-header h2{font-size:1.1rem;font-weight:700;color:var(--green);display:flex;align-items:center;gap:8px;}
+.settings-close{background:none;border:1px solid var(--border);color:var(--text);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;}
+.settings-close:hover{background:var(--card);}
+.settings-body{padding:16px 20px;display:flex;flex-direction:column;gap:18px;}
+
+/* settings section */
+.settings-section{}
+.settings-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;}
+
+/* theme grid inside settings */
+.s-theme-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.s-theme-card{border:2px solid var(--border);border-radius:10px;padding:10px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;transition:.2s;background:var(--card);}
+.s-theme-card:hover{border-color:#475569;}
+.s-theme-card.active{border-color:var(--green);background:rgba(0,255,136,0.07);}
+.s-theme-swatch{width:36px;height:14px;border-radius:7px;}
+.s-theme-name{font-size:11px;font-weight:700;color:var(--text);}
+
+/* map grid inside settings */
+.s-map-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+.s-map-card{border:2px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;transition:.2s;background:var(--card);display:flex;align-items:center;gap:10px;}
+.s-map-card:hover{border-color:#475569;}
+.s-map-card.active{border-color:var(--green);background:rgba(0,255,136,0.07);}
+.s-map-preview{width:38px;height:38px;border-radius:6px;background:#0f172a;border:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.s-map-info{}
+.s-map-name{font-size:12px;font-weight:700;color:var(--text);}
+.s-map-desc{font-size:10px;color:var(--muted);}
+
+/* toggle rows */
+.s-toggle-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #1e293b;}
+.s-toggle-row:last-child{border:none;}
+.s-toggle-label{font-size:13px;color:var(--text);}
+.s-toggle-sub{font-size:11px;color:var(--muted);}
+.toggle-switch{position:relative;width:42px;height:24px;flex-shrink:0;}
+.toggle-switch input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;inset:0;background:#334155;border-radius:24px;cursor:pointer;transition:.3s;}
+.toggle-slider:before{content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.3s;}
+input:checked+.toggle-slider{background:var(--green);}
+input:checked+.toggle-slider:before{transform:translateX(18px);}
+
+/* speed selector */
+.s-speed-grid{display:flex;gap:6px;}
+.s-speed-btn{flex:1;padding:8px 6px;border-radius:8px;border:2px solid var(--border);background:var(--card);color:var(--text);font-size:12px;font-weight:700;cursor:pointer;transition:.2s;}
+.s-speed-btn:hover{border-color:#475569;}
+.s-speed-btn.active{border-color:var(--green);background:rgba(0,255,136,0.08);color:var(--green);}
+
+/* reset btn */
+.s-reset-btn{width:100%;padding:10px;border-radius:10px;border:1px solid #ef4444;background:rgba(239,68,68,0.08);color:#ef4444;font-size:13px;font-weight:700;cursor:pointer;transition:.2s;}
+.s-reset-btn:hover{background:rgba(239,68,68,0.18);}
+
+/* toast */
+#toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-70px);background:#ffd700;color:#000;padding:10px 24px;border-radius:30px;font-weight:700;font-size:14px;z-index:999;transition:transform .4s cubic-bezier(.34,1.56,.64,1);pointer-events:none;}
+#toast.show{transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<!-- SETTINGS MODAL -->
+<div id="settings-backdrop">
+  <div id="settings-modal">
+    <div class="settings-header">
+      <h2>⚙️ Settings</h2>
+      <button class="settings-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="settings-body">
+
+      <!-- Theme -->
+      <div class="settings-section">
+        <div class="settings-section-title">🎨 Snake Theme</div>
+        <div class="s-theme-grid" id="sThemeGrid"></div>
+      </div>
+
+      <!-- Map -->
+      <div class="settings-section">
+        <div class="settings-section-title">🗺️ Map</div>
+        <div class="s-map-grid" id="sMapGrid"></div>
+      </div>
+
+      <!-- Speed -->
+      <div class="settings-section">
+        <div class="settings-section-title">⚡ Starting Speed</div>
+        <div class="s-speed-grid">
+          <button class="s-speed-btn active" data-speed="160" onclick="setSpeed(this)">🐢 Easy</button>
+          <button class="s-speed-btn" data-speed="120" onclick="setSpeed(this)">🐍 Normal</button>
+          <button class="s-speed-btn" data-speed="80" onclick="setSpeed(this)">🔥 Hard</button>
+          <button class="s-speed-btn" data-speed="50" onclick="setSpeed(this)">💀 Insane</button>
+        </div>
+      </div>
+
+      <!-- Toggles -->
+      <div class="settings-section">
+        <div class="settings-section-title">🔧 Options</div>
+        <div class="s-toggle-row">
+          <div><div class="s-toggle-label">Sound Effects</div><div class="s-toggle-sub">Eat, level-up, die sounds</div></div>
+          <label class="toggle-switch"><input type="checkbox" id="tog-sound" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div class="s-toggle-row">
+          <div><div class="s-toggle-label">Animated Background</div><div class="s-toggle-sub">Drifting stars</div></div>
+          <label class="toggle-switch"><input type="checkbox" id="tog-bg" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div class="s-toggle-row">
+          <div><div class="s-toggle-label">Particle Effects</div><div class="s-toggle-sub">Explosion on eating</div></div>
+          <label class="toggle-switch"><input type="checkbox" id="tog-particles" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div class="s-toggle-row">
+          <div><div class="s-toggle-label">Snake Wiggle</div><div class="s-toggle-sub">Animated body movement</div></div>
+          <label class="toggle-switch"><input type="checkbox" id="tog-wiggle" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div class="s-toggle-row">
+          <div><div class="s-toggle-label">Wall Wrap</div><div class="s-toggle-sub">Pass through walls instead of dying</div></div>
+          <label class="toggle-switch"><input type="checkbox" id="tog-wrap"><span class="toggle-slider"></span></label>
+        </div>
+      </div>
+
+      <!-- Reset -->
+      <div class="settings-section">
+        <div class="settings-section-title">⚠️ Data</div>
+        <button class="s-reset-btn" onclick="resetAllData()">🗑️ Reset All Progress & High Scores</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <h1>🐍 Snake Babu</h1>
+  <p class="subtitle">Eat · Grow · Level Up · Conquer</p>
+
+  <div class="stats">
+    <div class="stat-box">Score <span id="score">0</span></div>
+    <div class="stat-box">Best <span id="highScore">0</span></div>
+    <div class="stat-box">Level <span id="level">1</span></div>
+    <div class="stat-box">Streak <span id="streak">0</span></div>
+  </div>
+
+  <div class="top-bar">
+    <button class="btn btn-pause" onclick="togglePause()">⏸ Pause</button>
+    <button class="btn btn-restart" onclick="restartGame()">🔄 Restart</button>
+    <button class="btn btn-settings" onclick="openSettings()">⚙️ Settings</button>
+  </div>
+
+  <div class="pu-legend">
+    <div class="pu-item"><div class="pu-dot" style="background:#ff4444"></div>Normal</div>
+    <div class="pu-item"><div class="pu-dot" style="background:#ffd700"></div>2× Pts</div>
+    <div class="pu-item"><div class="pu-dot" style="background:#00bfff"></div>Slow</div>
+    <div class="pu-item"><div class="pu-dot" style="background:#ff69b4"></div>Shrink</div>
+    <div class="pu-item"><div class="pu-dot" style="background:#ff4500"></div>Shield</div>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="game" width="480" height="480"></canvas>
+    <div id="overlay">
+      <h2>🐍 Snake Babu Pro</h2>
+      <p style="color:#94a3b8;font-size:13px;margin-bottom:4px;">Arrow keys or swipe to move · Space = pause</p>
+      <p style="color:#64748b;font-size:12px;margin-bottom:6px;">Eat coloured food for power-ups!</p>
+      <button class="btn btn-start" onclick="startGame()">▶ Start Game</button>
+      <button class="btn btn-settings" style="margin-top:8px;background:#1e293b;" onclick="openSettings()">⚙️ Settings</button>
+    </div>
+    <div id="levelup-overlay">
+      <h2 id="levelup-text">LEVEL 2!</h2>
+      <div class="lvl-stars">⭐</div>
+    </div>
+  </div>
+
+  <div class="dpad">
+    <div class="dpad-empty"></div>
+    <button class="dpad-btn" id="up-btn">▲</button>
+    <div class="dpad-empty"></div>
+    <button class="dpad-btn" id="left-btn">◀</button>
+    <div class="dpad-empty"></div>
+    <button class="dpad-btn" id="right-btn">▶</button>
+    <div class="dpad-empty"></div>
+    <button class="dpad-btn" id="down-btn">▼</button>
+    <div class="dpad-empty"></div>
+  </div>
+
+  <div class="info-panel">
+    <div class="panel-title">🎯 Active Missions</div>
+    <div class="mission-list" id="missionList"></div>
+  </div>
+
+  <div class="info-panel">
+    <div class="panel-title">🏅 Achievements</div>
+    <div class="ach-grid" id="achGrid"></div>
+  </div>
+
+  <div class="info-panel">
+    <div class="panel-title">🏆 Top Scores</div>
+    <div id="lb-list"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─── Settings state ──────────────────────────────────────────────────────────
+let soundOn=true,bgOn=true,particlesOn=true,wiggleOn=true,wallWrap=false;
+let baseSpeed=160;
+
+function openSettings(){document.getElementById('settings-backdrop').classList.add('open');}
+function closeSettings(){document.getElementById('settings-backdrop').classList.remove('open');}
+document.getElementById('settings-backdrop').addEventListener('click',function(e){if(e.target===this)closeSettings();});
+function setSpeed(btn){
+  document.querySelectorAll('.s-speed-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  baseSpeed=parseInt(btn.dataset.speed);
+  speed=baseSpeed;
+}
+function resetAllData(){
+  if(!confirm('Reset ALL scores, achievements, and missions?'))return;
+  ['sbHS3','sbLB3','sbAch2','sbMissions'].forEach(k=>localStorage.removeItem(k));
+  location.reload();
+}
+document.getElementById('tog-sound').onchange=e=>soundOn=e.target.checked;
+document.getElementById('tog-bg').onchange=e=>{bgOn=e.target.checked;bgCanvas.style.opacity=bgOn?1:0;};
+document.getElementById('tog-particles').onchange=e=>particlesOn=e.target.checked;
+document.getElementById('tog-wiggle').onchange=e=>wiggleOn=e.target.checked;
+document.getElementById('tog-wrap').onchange=e=>wallWrap=e.target.checked;
+
+// ─── Audio ───────────────────────────────────────────────────────────────────
+const AudioCtx=window.AudioContext||window.webkitAudioContext;
+let audioCtx;
+function getAC(){if(!audioCtx)audioCtx=new AudioCtx();return audioCtx;}
+function tone(freq,type,dur,vol=0.25){
+  if(!soundOn)return;
+  try{const ac=getAC();const o=ac.createOscillator();const g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);o.type=type;
+    o.frequency.setValueAtTime(freq,ac.currentTime);
+    g.gain.setValueAtTime(vol,ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+dur);
+    o.start();o.stop(ac.currentTime+dur);}catch(e){}
+}
+const sfxEat=()=>{tone(440,'sine',.12,.2);setTimeout(()=>tone(660,'sine',.12,.2),80);};
+const sfxPowerup=()=>{[300,400,500,700].forEach((f,i)=>setTimeout(()=>tone(f,'square',.1,.15),i*60));};
+const sfxDie=()=>{[400,300,200,100].forEach((f,i)=>setTimeout(()=>tone(f,'sawtooth',.15,.3),i*80));};
+const sfxLevelup=()=>{[500,600,700,900,700,900].forEach((f,i)=>setTimeout(()=>tone(f,'sine',.12,.25),i*70));};
+const sfxAchieve=()=>{[600,800,1000,800,1200].forEach((f,i)=>setTimeout(()=>tone(f,'sine',.15,.2),i*80));};
+
+// ─── Animated BG ─────────────────────────────────────────────────────────────
+const bgCanvas=document.getElementById('bg-canvas');
+const bgCtx=bgCanvas.getContext('2d');
+let stars=[];
+function initStars(){
+  bgCanvas.width=window.innerWidth;bgCanvas.height=window.innerHeight;
+  stars=Array.from({length:130},()=>({
+    x:Math.random()*bgCanvas.width,y:Math.random()*bgCanvas.height,
+    r:Math.random()*1.5+.3,spd:Math.random()*.35+.05,
+    op:Math.random()*.6+.1,ph:Math.random()*Math.PI*2
+  }));
+}
+function animateBg(){
+  bgCtx.clearRect(0,0,bgCanvas.width,bgCanvas.height);
+  if(bgOn){
+    stars.forEach(s=>{
+      s.y+=s.spd;s.ph+=.02;if(s.y>bgCanvas.height)s.y=0;
+      const op=s.op*(.7+.3*Math.sin(s.ph));
+      bgCtx.beginPath();bgCtx.arc(s.x,s.y,s.r,0,Math.PI*2);
+      bgCtx.fillStyle=`rgba(100,200,255,${op})`;bgCtx.fill();
+    });
+  }
+  requestAnimationFrame(animateBg);
+}
+initStars();animateBg();
+window.addEventListener('resize',initStars);
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2400);
+}
+
+// ─── Themes ──────────────────────────────────────────────────────────────────
+const THEMES={
+  classic:{head:'#00ff88',body:'#00b36b',border:'#00ff88',name:'Classic',emoji:'🐍'},
+  fire:    {head:'#ff4500',body:'#ff8c00',border:'#ff4500',name:'Fire',   emoji:'🔥'},
+  ocean:   {head:'#00d4ff',body:'#0077ff',border:'#00d4ff',name:'Ocean',  emoji:'🌊'},
+  galaxy:  {head:'#da70d6',body:'#9c27b0',border:'#da70d6',name:'Galaxy', emoji:'🌌'},
+  gold:    {head:'#ffd700',body:'#daa520',border:'#ffd700',name:'Gold',   emoji:'✨'},
+  neon:    {head:'#ff00ff',body:'#cc00cc',border:'#ff00ff',name:'Neon',   emoji:'💜'},
+};
+let currentTheme='classic';
+const sThemeGrid=document.getElementById('sThemeGrid');
+Object.entries(THEMES).forEach(([key,th])=>{
+  const c=document.createElement('div');
+  c.className='s-theme-card'+(key==='classic'?' active':'');
+  c.dataset.key=key;
+  c.innerHTML=`<div class="s-theme-swatch" style="background:linear-gradient(90deg,${th.head},${th.body})"></div>
+    <div class="s-theme-name">${th.emoji} ${th.name}</div>`;
+  c.onclick=()=>{
+    currentTheme=key;
+    document.querySelectorAll('.s-theme-card').forEach(x=>x.classList.remove('active'));
+    c.classList.add('active');
+    document.getElementById('game').style.borderColor=th.border;
+    showToast('Theme: '+th.name);
+  };
+  sThemeGrid.appendChild(c);
+});
+
+// ─── Maps ────────────────────────────────────────────────────────────────────
+const MAPS={
+  open:  {name:'Open Field',  emoji:'🌿',desc:'No obstacles',        obstacles:()=>[]},
+  cross: {name:'Cross',       emoji:'➕',desc:'Cross wall in center', obstacles:()=>{
+    let o=[];for(let i=7;i<=16;i++)o.push({x:i*20,y:11*20});for(let j=7;j<=16;j++)o.push({x:11*20,y:j*20});return o;
+  }},
+  border:{name:'Fortress',    emoji:'🏰',desc:'Inner border walls',   obstacles:()=>{
+    let o=[];
+    for(let i=3;i<=20;i++){o.push({x:i*20,y:3*20});o.push({x:i*20,y:20*20});}
+    for(let j=3;j<=20;j++){o.push({x:3*20,y:j*20});o.push({x:20*20,y:j*20});}
+    return o;
+  }},
+  maze:  {name:'Maze',        emoji:'🧩',desc:'Complex corridors',    obstacles:()=>[
+    ...Array.from({length:6},(_,i)=>({x:(3+i)*20,y:5*20})),
+    ...Array.from({length:6},(_,i)=>({x:(15+i)*20,y:5*20})),
+    ...Array.from({length:5},(_,i)=>({x:5*20,y:(6+i)*20})),
+    ...Array.from({length:5},(_,i)=>({x:18*20,y:(6+i)*20})),
+    ...Array.from({length:6},(_,i)=>({x:(3+i)*20,y:17*20})),
+    ...Array.from({length:6},(_,i)=>({x:(15+i)*20,y:17*20})),
+    ...Array.from({length:5},(_,i)=>({x:10*20,y:(9+i)*20})),
+    ...Array.from({length:7},(_,i)=>({x:(7+i)*20,y:14*20})),
+  ]},
+};
+let currentMap='open',obstacles=[];
+const sMapGrid=document.getElementById('sMapGrid');
+Object.entries(MAPS).forEach(([key,m])=>{
+  const c=document.createElement('div');
+  c.className='s-map-card'+(key==='open'?' active':'');
+  c.dataset.key=key;
+  c.innerHTML=`<div class="s-map-preview">${m.emoji}</div>
+    <div class="s-map-info"><div class="s-map-name">${m.name}</div><div class="s-map-desc">${m.desc}</div></div>`;
+  c.onclick=()=>{
+    currentMap=key;
+    document.querySelectorAll('.s-map-card').forEach(x=>x.classList.remove('active'));
+    c.classList.add('active');
+    buildObstacles();showToast('Map: '+m.name);
+  };
+  sMapGrid.appendChild(c);
+});
+function buildObstacles(){obstacles=MAPS[currentMap].obstacles();}
+buildObstacles();
+
+// ─── Achievements ─────────────────────────────────────────────────────────────
+const ACHIEVEMENTS=[
+  {id:'first',icon:'🥚',name:'First Meal',  desc:'Eat your first food',check:s=>s>=1},
+  {id:'s10',  icon:'⭐',name:'10 Points',   desc:'Reach score 10',     check:s=>s>=10},
+  {id:'s25',  icon:'🌟',name:'25 Points',   desc:'Reach score 25',     check:s=>s>=25},
+  {id:'s50',  icon:'💫',name:'50 Points',   desc:'Reach score 50',     check:s=>s>=50},
+  {id:'l5',   icon:'🚀',name:'Level 5',     desc:'Reach level 5',      check:(_,l)=>l>=5},
+  {id:'l10',  icon:'🏆',name:'Level 10',    desc:'Reach level 10',     check:(_,l)=>l>=10},
+  {id:'st5',  icon:'🔥',name:'Hot Streak',  desc:'Streak of 5',        check:(_,__,s)=>s>=5},
+  {id:'st10', icon:'💥',name:'Unstoppable', desc:'Streak of 10',       check:(_,__,s)=>s>=10},
+];
+let unlockedAch=new Set();
+try{let s=localStorage.getItem('sbAch2');if(s)unlockedAch=new Set(JSON.parse(s));}catch(e){}
+function saveAch(){try{localStorage.setItem('sbAch2',JSON.stringify([...unlockedAch]));}catch(e){}}
+function checkAch(sc,lv,st){
+  ACHIEVEMENTS.forEach(a=>{
+    if(!unlockedAch.has(a.id)&&a.check(sc,lv,st)){
+      unlockedAch.add(a.id);saveAch();
+      showToast('🏅 '+a.name+' unlocked!');sfxAchieve();renderAch();
+    }
+  });
+}
+function renderAch(){
+  document.getElementById('achGrid').innerHTML=ACHIEVEMENTS.map(a=>{
+    const done=unlockedAch.has(a.id);
+    return`<div class="ach-item${done?' unlocked':''}">
+      <div class="ach-icon" style="opacity:${done?1:.25}">${a.icon}</div>
+      <div><div class="ach-name">${a.name}</div><div class="ach-desc">${a.desc}</div></div>
+    </div>`;
+  }).join('');
+}
+renderAch();
+
+// ─── Missions ─────────────────────────────────────────────────────────────────
+const MISSION_DEFS=[
+  {id:'eat5',    label:'Eat 5 food',      target:5,  stat:'foodEaten'},
+  {id:'eat15',   label:'Eat 15 food',     target:15, stat:'foodEaten'},
+  {id:'score20', label:'Score 20 points', target:20, stat:'score'},
+  {id:'lv3',     label:'Reach level 3',   target:3,  stat:'level'},
+  {id:'pu3',     label:'Eat 3 power-ups', target:3,  stat:'puEaten'},
+  {id:'str7',    label:'Streak of 7',     target:7,  stat:'maxStreak'},
+];
+let activeMissions=[],missionProg={foodEaten:0,score:0,level:0,puEaten:0,maxStreak:0};
+let doneMissions=new Set();
+try{let s=localStorage.getItem('sbMissions');if(s)doneMissions=new Set(JSON.parse(s));}catch(e){}
+function saveMissions(){try{localStorage.setItem('sbMissions',JSON.stringify([...doneMissions]));}catch(e){}}
+function pickMissions(){activeMissions=MISSION_DEFS.filter(m=>!doneMissions.has(m.id)).slice(0,3);}
+function updMission(stat,val){
+  missionProg[stat]=Math.max(missionProg[stat],val);
+  activeMissions.forEach(m=>{
+    if(m.stat===stat&&val>=m.target&&!doneMissions.has(m.id)){
+      doneMissions.add(m.id);saveMissions();
+      showToast('🎯 Mission: '+m.label+' done!');sfxAchieve();
+      setTimeout(pickMissions,1500);
+    }
+  });
+  renderMissions();
+}
+function renderMissions(){
+  const el=document.getElementById('missionList');
+  if(!activeMissions.length){el.innerHTML='<div style="color:#64748b;font-size:13px;">All missions complete! 🎉</div>';return;}
+  el.innerHTML=activeMissions.map(m=>{
+    const prog=Math.min(missionProg[m.stat]||0,m.target);
+    const pct=Math.round((prog/m.target)*100);
+    const done=doneMissions.has(m.id);
+    return`<div class="mission-item${done?' done':''}">
+      <span style="font-size:13px;color:var(--text);flex:none;min-width:120px">${m.label}</span>
+      <div class="mission-bar-wrap"><div class="mission-bar" style="width:${pct}%"></div></div>
+      <span class="mission-label">${prog}/${m.target}</span>
+    </div>`;
+  }).join('');
+}
+pickMissions();renderMissions();
+
+// ─── Leaderboard ──────────────────────────────────────────────────────────────
+let leaderboard=[];
+try{let s=localStorage.getItem('sbLB3');if(s)leaderboard=JSON.parse(s);}catch(e){}
+function addScore(s){
+  leaderboard.push({score:s,date:new Date().toLocaleDateString()});
+  leaderboard.sort((a,b)=>b.score-a.score);
+  if(leaderboard.length>5)leaderboard=leaderboard.slice(0,5);
+  try{localStorage.setItem('sbLB3',JSON.stringify(leaderboard));}catch(e){}
+  renderLB();
+}
+function renderLB(){
+  const el=document.getElementById('lb-list');
+  if(!leaderboard.length){el.innerHTML='<div style="color:#475569;font-size:13px;">No scores yet — play a game!</div>';return;}
+  const medals=['🥇','🥈','🥉','4️⃣','5️⃣'];
+  el.innerHTML=leaderboard.map((e,i)=>`
+    <div class="lb-row">
+      <span class="lb-rank">${medals[i]||'#'+(i+1)}</span>
+      <span style="flex:1;color:#cbd5e1;font-size:13px;">${e.date}</span>
+      <span class="lb-score">${e.score}</span>
+    </div>`).join('');
+}
+renderLB();
+
+// ─── Game ─────────────────────────────────────────────────────────────────────
+const canvas=document.getElementById('game');
+const ctx=canvas.getContext('2d');
+const BOX=20,COLS=24,ROWS=24;
+let highScore=parseInt(localStorage.getItem('sbHS3')||'0');
+document.getElementById('highScore').textContent=highScore;
+
+let snake,food,direction,nextDir,score,speed,gameLoop,paused=false;
+let level=1,streak=0,maxStreak=0,foodEaten=0,puEaten=0;
+let activePU=null,puEnd=0;
+let particles=[],wiggleT=0;
+
+function spawnFood(){
+  let pos;
+  do{
+    pos={x:Math.floor(Math.random()*COLS)*BOX,y:Math.floor(Math.random()*ROWS)*BOX,type:'normal'};
+    const r=Math.random();
+    if(r<.18)pos.type='double';
+    else if(r<.32)pos.type='slow';
+    else if(r<.44)pos.type='shrink';
+    else if(r<.54)pos.type='shield';
+  }while(snake.some(s=>s.x===pos.x&&s.y===pos.y)||obstacles.some(o=>o.x===pos.x&&o.y===pos.y));
+  return pos;
+}
+
+function initGame(){
+  snake=[{x:240,y:240},{x:220,y:240},{x:200,y:240}];
+  direction='RIGHT';nextDir='RIGHT';
+  score=0;level=1;speed=baseSpeed;
+  streak=0;maxStreak=0;foodEaten=0;puEaten=0;
+  activePU=null;puEnd=0;particles=[];wiggleT=0;
+  missionProg={foodEaten:0,score:0,level:0,puEaten:0,maxStreak:0};
+  pickMissions();renderMissions();
+  food=spawnFood();
+  ['score','level','streak'].forEach(id=>document.getElementById(id).textContent=id==='level'?1:0);
+}
+
+function startGame(){
+  document.getElementById('overlay').style.display='none';
+  initGame();clearInterval(gameLoop);gameLoop=setInterval(tick,speed);
+}
+function restartGame(){
+  clearInterval(gameLoop);initGame();
+  document.getElementById('overlay').style.display='none';
+  gameLoop=setInterval(tick,speed);
+}
+function togglePause(){
+  paused=!paused;
+  if(paused)clearInterval(gameLoop);
+  else{clearInterval(gameLoop);gameLoop=setInterval(tick,speed);}
+}
+
+// ─── Particles ────────────────────────────────────────────────────────────────
+function spawnParticles(x,y,color,n=14){
+  if(!particlesOn)return;
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2,sp=Math.random()*4+1.5;
+    particles.push({x:x+BOX/2,y:y+BOX/2,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,
+      life:1,color,size:Math.random()*5+2,rot:Math.random()*Math.PI*2,rs:(Math.random()-.5)*.3});
+  }
+}
+function updateParticles(){
+  particles=particles.filter(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.12;p.life-=.055;p.rot+=p.rs;return p.life>0;});
+}
+function drawParticles(){
+  particles.forEach(p=>{
+    ctx.save();ctx.globalAlpha=p.life;ctx.fillStyle=p.color;
+    ctx.translate(p.x,p.y);ctx.rotate(p.rot);
+    ctx.beginPath();ctx.moveTo(0,-p.size);ctx.lineTo(p.size*.6,p.size*.6);ctx.lineTo(-p.size*.6,p.size*.6);
+    ctx.closePath();ctx.fill();ctx.restore();
+  });
+  ctx.globalAlpha=1;
+}
+
+// ─── Draw ─────────────────────────────────────────────────────────────────────
+function drawGrid(){
+  ctx.strokeStyle='rgba(0,255,136,0.04)';ctx.lineWidth=.5;
+  for(let i=0;i<=COLS;i++){ctx.beginPath();ctx.moveTo(i*BOX,0);ctx.lineTo(i*BOX,canvas.height);ctx.stroke();}
+  for(let j=0;j<=ROWS;j++){ctx.beginPath();ctx.moveTo(0,j*BOX);ctx.lineTo(canvas.width,j*BOX);ctx.stroke();}
+}
+function drawObstacles(){
+  obstacles.forEach(o=>{
+    ctx.fillStyle='#1e293b';ctx.fillRect(o.x,o.y,BOX,BOX);
+    ctx.fillStyle='#293548';ctx.fillRect(o.x+2,o.y+2,BOX-4,BOX-4);
+    ctx.strokeStyle='#334155';ctx.lineWidth=1;ctx.strokeRect(o.x,o.y,BOX,BOX);
+  });
+}
+function drawFood(){
+  const COL={normal:'#ff4444',double:'#ffd700',slow:'#00bfff',shrink:'#ff69b4',shield:'#ff4500'};
+  const SYM={double:'★',slow:'❄',shrink:'✂',shield:'🛡'};
+  const t=Date.now()/400;
+  const fc=COL[food.type];
+  const fx=food.x+BOX/2+Math.sin(t)*2,fy=food.y+BOX/2+Math.cos(t*.7)*2;
+  const r=BOX/2-1+Math.sin(t*2)*1.5;
+  ctx.shadowBlur=14;ctx.shadowColor=fc;
+  ctx.fillStyle=fc;ctx.beginPath();ctx.arc(fx,fy,r,0,Math.PI*2);ctx.fill();
+  ctx.shadowBlur=0;
+  if(food.type!=='normal'){
+    ctx.fillStyle='#fff';ctx.font='bold 11px Arial';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(SYM[food.type],fx,fy);
+  }
+}
+function drawSnake(){
+  const th=THEMES[currentTheme];
+  if(wiggleOn)wiggleT+=.25;
+  snake.forEach((part,i)=>{
+    const alpha=Math.max(.35,1-(i/snake.length)*.55);
+    const woff=wiggleOn&&i>0?Math.sin(wiggleT-i*.5)*1.5:0;
+    const x=part.x+woff;
+    ctx.globalAlpha=alpha;
+    if(i===0){ctx.shadowBlur=12;ctx.shadowColor=th.head;}else ctx.shadowBlur=0;
+    ctx.fillStyle=i===0?th.head:th.body;
+    const m=1,rx=i===0?5:3;
+    const bx=x+m,by=part.y+m,bw=BOX-m*2,bh=BOX-m*2;
+    ctx.beginPath();ctx.moveTo(bx+rx,by);ctx.lineTo(bx+bw-rx,by);
+    ctx.arcTo(bx+bw,by,bx+bw,by+rx,rx);ctx.lineTo(bx+bw,by+bh-rx);
+    ctx.arcTo(bx+bw,by+bh,bx+bw-rx,by+bh,rx);ctx.lineTo(bx+rx,by+bh);
+    ctx.arcTo(bx,by+bh,bx,by+bh-rx,rx);ctx.lineTo(bx,by+rx);
+    ctx.arcTo(bx,by,bx+rx,by,rx);ctx.closePath();ctx.fill();
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+    if(i===0){
+      let ex1,ey1,ex2,ey2;
+      if(direction==='RIGHT'){ex1=x+14;ey1=part.y+5;ex2=x+14;ey2=part.y+13;}
+      else if(direction==='LEFT'){ex1=x+5;ey1=part.y+5;ex2=x+5;ey2=part.y+13;}
+      else if(direction==='UP'){ex1=x+5;ey1=part.y+5;ex2=x+13;ey2=part.y+5;}
+      else{ex1=x+5;ey1=part.y+13;ex2=x+13;ey2=part.y+13;}
+      ctx.fillStyle='#000';
+      ctx.beginPath();ctx.arc(ex1,ey1,2.5,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(ex2,ey2,2.5,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#fff';
+      ctx.beginPath();ctx.arc(ex1+.8,ey1-.8,.9,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(ex2+.8,ey2-.8,.9,0,Math.PI*2);ctx.fill();
+    }
+    if(activePU==='shield'){
+      ctx.globalAlpha=.15+Math.sin(Date.now()/200)*.08;
+      ctx.fillStyle='#ff4500';
+      ctx.beginPath();ctx.arc(part.x+BOX/2,part.y+BOX/2,BOX/2+4,0,Math.PI*2);ctx.fill();
+      ctx.globalAlpha=1;
+    }
+  });
+}
+function drawHUD(){
+  if(!activePU)return;
+  const C={double:'#ffd700',slow:'#00bfff',shrink:'#ff69b4',shield:'#ff4500'};
+  const L={double:'2× Points',slow:'Slow Mode',shrink:'Shrunk!',shield:'Shield'};
+  const rem=Math.max(0,Math.ceil((puEnd-Date.now())/1000));
+  ctx.fillStyle=C[activePU];ctx.globalAlpha=.85;
+  ctx.beginPath();
+  if(ctx.roundRect)ctx.roundRect(4,4,150,24,12);
+  else ctx.rect(4,4,150,24);
+  ctx.fill();ctx.globalAlpha=1;
+  ctx.fillStyle='#000';ctx.font='bold 12px Arial';
+  ctx.textAlign='left';ctx.textBaseline='middle';
+  ctx.fillText('⚡ '+L[activePU]+(activePU!=='shrink'?' '+rem+'s':''),10,16);
+}
+
+function showLevelUp(lv){
+  const ov=document.getElementById('levelup-overlay');
+  document.getElementById('levelup-text').textContent='LEVEL '+lv+'!';
+  ov.classList.add('show');sfxLevelup();
+  setTimeout(()=>ov.classList.remove('show'),1800);
+}
+
+function gameOver(){
+  clearInterval(gameLoop);sfxDie();addScore(score);
+  if(score>highScore){highScore=score;localStorage.setItem('sbHS3',highScore);document.getElementById('highScore').textContent=highScore;}
+  const ov=document.getElementById('overlay');
+  ov.innerHTML=`<h2>💀 Game Over</h2>
+    <div class="ov-score">${score}</div>
+    <div class="ov-sub">High Score: ${highScore} · Level ${level}</div>
+    <button class="btn btn-start" onclick="restartGame()">🔄 Play Again</button>
+    <button class="btn btn-settings" style="margin-top:8px;background:#1e293b;" onclick="openSettings()">⚙️ Settings</button>`;
+  ov.style.display='flex';
+}
+
+// ─── Tick ─────────────────────────────────────────────────────────────────────
+function tick(){
+  direction=nextDir;
+  let hx=snake[0].x,hy=snake[0].y;
+  if(direction==='LEFT')hx-=BOX;
+  if(direction==='RIGHT')hx+=BOX;
+  if(direction==='UP')hy-=BOX;
+  if(direction==='DOWN')hy+=BOX;
+
+  // wall wrap
+  if(wallWrap){
+    if(hx<0)hx=canvas.width-BOX;else if(hx>=canvas.width)hx=0;
+    if(hy<0)hy=canvas.height-BOX;else if(hy>=canvas.height)hy=0;
+  } else {
+    if(hx<0||hy<0||hx>=canvas.width||hy>=canvas.height){gameOver();return;}
+  }
+
+  if(obstacles.some(o=>o.x===hx&&o.y===hy)){gameOver();return;}
+
+  const selfHit=snake.some(s=>s.x===hx&&s.y===hy);
+  if(selfHit){if(activePU==='shield')activePU=null;else{gameOver();return;}}
+
+  const newHead={x:hx,y:hy};
+
+  if(hx===food.x&&hy===food.y){
+    const FC={normal:'#ff4444',double:'#ffd700',slow:'#00bfff',shrink:'#ff69b4',shield:'#ff4500'};
+    spawnParticles(hx,hy,FC[food.type],18);
+    foodEaten++;streak++;
+    if(streak>maxStreak)maxStreak=streak;
+    sfxEat();
+    let pts=(food.type==='double'||(activePU==='double'))?2:1;
+    if(food.type==='double'&&activePU==='double')pts=3;
+    score+=pts;
+    document.getElementById('score').textContent=score;
+    document.getElementById('streak').textContent=streak;
+    if(score>highScore){highScore=score;localStorage.setItem('sbHS3',highScore);document.getElementById('highScore').textContent=highScore;}
+    if(food.type!=='normal'){
+      puEaten++;sfxPowerup();
+      const DUR={double:8000,slow:6000,shield:5000,shrink:0};
+      activePU=food.type;
+      if(DUR[food.type])puEnd=Date.now()+DUR[food.type];
+      if(food.type==='slow'){clearInterval(gameLoop);speed=Math.min(speed+50,220);gameLoop=setInterval(tick,speed);}
+      if(food.type==='shrink'&&snake.length>3)snake=snake.slice(0,Math.max(3,Math.floor(snake.length/2)));
+    }
+    const nl=Math.floor(score/5)+1;
+    if(nl>level){level=nl;document.getElementById('level').textContent=level;showLevelUp(level);}
+    if(score%5===0){speed=Math.max(40,speed-8);clearInterval(gameLoop);gameLoop=setInterval(tick,speed);}
+    updMission('foodEaten',foodEaten);updMission('score',score);
+    updMission('level',level);updMission('puEaten',puEaten);updMission('maxStreak',maxStreak);
+    checkAch(score,level,streak);
+    food=spawnFood();
+  } else {
+    snake.pop();streak=0;document.getElementById('streak').textContent=0;
+  }
+
+  if(activePU&&activePU!=='shrink'&&activePU!=='shield'&&Date.now()>puEnd){
+    if(activePU==='slow'){speed=Math.max(40,baseSpeed-(level-1)*8);clearInterval(gameLoop);gameLoop=setInterval(tick,speed);}
+    activePU=null;
+  }
+  if(activePU==='shield'&&Date.now()>puEnd)activePU=null;
+
+  snake.unshift(newHead);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawGrid();drawObstacles();updateParticles();drawParticles();drawSnake();drawFood();drawHUD();
+}
+
+// ─── Controls ─────────────────────────────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  const M={'ArrowLeft':'LEFT','ArrowRight':'RIGHT','ArrowUp':'UP','ArrowDown':'DOWN'};
+  const O={LEFT:'RIGHT',RIGHT:'LEFT',UP:'DOWN',DOWN:'UP'};
+  if(M[e.key]&&direction!==O[M[e.key]])nextDir=M[e.key];
+  if(e.key===' '){togglePause();e.preventDefault();}
+  if(M[e.key])e.preventDefault();
+});
+function setupDpad(id,dir,opp){
+  const b=document.getElementById(id);
+  function go(){if(direction!==opp)nextDir=dir;}
+  b.addEventListener('touchstart',e=>{e.preventDefault();go();b.classList.add('pressed');},{passive:false});
+  b.addEventListener('touchend',e=>{e.preventDefault();b.classList.remove('pressed');},{passive:false});
+  b.addEventListener('mousedown',()=>{go();b.classList.add('pressed');});
+  b.addEventListener('mouseup',()=>b.classList.remove('pressed'));
+}
+setupDpad('up-btn','UP','DOWN');setupDpad('down-btn','DOWN','UP');
+setupDpad('left-btn','LEFT','RIGHT');setupDpad('right-btn','RIGHT','LEFT');
+let tx=0,ty=0;
+canvas.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY;e.preventDefault();},{passive:false});
+canvas.addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;
+  if(Math.abs(dx)>Math.abs(dy)){if(dx>20&&direction!=='LEFT')nextDir='RIGHT';else if(dx<-20&&direction!=='RIGHT')nextDir='LEFT';}
+  else{if(dy>20&&direction!=='UP')nextDir='DOWN';else if(dy<-20&&direction!=='DOWN')nextDir='UP';}
+  e.preventDefault();
+},{passive:false});
+</script>
+</body>
+</html>
